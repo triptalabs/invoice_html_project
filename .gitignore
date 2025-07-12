@@ -1,0 +1,30 @@
+# Node modules
+node_modules/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# PDF y archivos generados
+invoice.pdf
+font_test.pdf
+
+# Puppeteer Chromium cache
+.chromium/
+puppeteer_cache/
+
+# Entornos
+.env
+.env.*
+
+# Otros
+*.swp
+.idea/
+.vscode/ 

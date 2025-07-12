@@ -1,0 +1,73 @@
+{
+  "company": {
+    "name": "Tripta Labs",
+    "logo": "Assets/logotipo negro.png",
+    "logo_small": "Assets/logo negro.png",
+    "tax_id": "1057564920-5",
+    "phone": "57 311 441 6322",
+    "city": "Tunja, Boyacá",
+    "website": "www.triptalabs.com.co"
+  },
+  "client": {
+    "name": "Cliente en General",
+    "nit": "N/A",
+    "code": "N/A"
+  },
+  "invoice": {
+    "type": "Cotización",
+    "number": "436",
+    "place": "Tunja, Boyacá",
+    "date": "11 de Julio 2025",
+    "expiry_date": "",
+    "seller": "",
+    "conditions": "Transferencia",
+    "reference": "",
+    "delivery": "Envío"
+  },
+  "items": [
+    {
+      "code": "TL-INS-E-2-C",
+      "name": "Empaque Unión VITON 6\"",
+      "details": [
+        "Material: VITON",
+        "Diámetro: 6\"",
+        "Rango temperatura: -26 °C a +222 °C"
+      ],
+      "quantity": 2.00,
+      "unit_price": 57000,
+      "total": 114000
+    },
+    {
+      "code": "TL-INS-E-2",
+      "name": "Empaque Unión VITON 1.5\"",
+      "details": [
+        "Material: VITON",
+        "Diámetro: 1.5\"",
+        "Rango temperatura: -26 °C a +222 °C"
+      ],
+      "quantity": 4.00,
+      "unit_price": 10500,
+      "total": 42000
+    },
+    {
+      "code": "TL-INS-E-2-A",
+      "name": "Empaque Unión VITON 3\"",
+      "details": [
+        "Material: VITON",
+        "Diámetro: 3\"",
+        "Rango temperatura: -26 °C a +222 °C"
+      ],
+      "quantity": 2.00,
+      "unit_price": 21000,
+      "total": 42000
+    }  ],
+"observations": [
+    "Para la fabricación de equipos, requerimos un abono equivalente al 30% del total del equipo, el 70% restante se cancela el día de la entrega /envío. El tiempo de entrega es de 10 días hábiles para equipos sin electrónica (CLS, Autoclaves, Columnas de extracción, cilindros, etc.) y de 20 días hábiles para equipos con electrónica (Hornos de vacío, liofilizadoras, Cabinas de flujo laminar, etc.",
+    "Los precios ofertados en este documento no incluyen el impuesto I.V.A."
+  ],
+  "totals": {
+    "subtotal": "198.000",
+    "total_numeric": "198.000,00",
+    "total_text": "CIENTO NOVENTA Y OCHO MIL 00/100"
+  }
+}
