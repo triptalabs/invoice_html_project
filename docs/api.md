@@ -100,6 +100,77 @@ El cuerpo de la petición debe ser un objeto JSON con la siguiente estructura (p
 
 ---
 
+## Formato de Respuestas de Error (Validación y Archivos Faltantes)
+
+A partir de la versión que resuelve el issue #1, los errores de validación y archivos faltantes devuelven un JSON con el siguiente formato:
+
+```json
+{
+  "error": "Mensaje general del error",
+  "details": [
+    "Detalle 1",
+    "Detalle 2"
+  ]
+}
+```
+
+### Ejemplos
+
+- **Error de validación de datos:**
+
+```json
+{
+  "error": "Datos de factura inválidos",
+  "details": [
+    "\"company.name\" is required",
+    "\"items\" must contain at least 1 items"
+  ]
+}
+```
+
+- **Archivo de logo no encontrado:**
+
+```json
+{
+  "error": "Archivo de logo no encontrado",
+  "details": [
+    "No existe el archivo: assets/logo.png"
+  ]
+}
+```
+
+- **Fuente no encontrada:**
+
+```json
+{
+  "error": "Fuente no encontrada",
+  "details": [
+    "No existe el archivo: assets/fonts/DanhDa-Bold.ttf"
+  ]
+}
+```
+
+---
+
+## Reglas de validación de datos (esquema mínimo)
+
+El endpoint `/generate-invoice` valida el JSON recibido con el siguiente esquema mínimo:
+
+- **client** (objeto, requerido)
+  - name: string, requerido
+  - id: string, requerido
+  - address: string, requerido
+- **items** (array, requerido, mínimo 1 elemento)
+  - Cada item:
+    - description: string, requerido
+    - quantity: number, requerido
+    - price: number, requerido
+
+> El campo company ya no es requerido ni validado. El logo se asigna automáticamente en el backend.
+> El campo total no debe enviarse: el backend lo calcula automáticamente sumando los subtotales de los items.
+
+---
+
 ## Stack Tecnológico
 
 - **Node.js** (>=16)
