@@ -8,6 +8,18 @@
 function calcularTotales(data) {
   // Copia profunda para no mutar el original
   const factura = JSON.parse(JSON.stringify(data));
+
+  // Permitir que iva y descuento estén en la raíz o en invoice
+  // Prioridad: raíz > invoice
+  let ivaRaw = factura.iva;
+  let descuentoRaw = factura.descuento;
+  if (typeof ivaRaw === 'undefined' && factura.invoice && typeof factura.invoice.iva !== 'undefined') {
+    ivaRaw = factura.invoice.iva;
+  }
+  if (typeof descuentoRaw === 'undefined' && factura.invoice && typeof factura.invoice.descuento !== 'undefined') {
+    descuentoRaw = factura.invoice.descuento;
+  }
+
   // Calcular subtotal y total de cada item
   factura.items = factura.items.map(item => {
     const subtotal = Number(item.quantity) * Number(item.unit_price);
@@ -15,28 +27,61 @@ function calcularTotales(data) {
   });
   // Subtotal general
   const subtotal = factura.items.reduce((acc, item) => acc + item.subtotal, 0);
-  // IVA
+
+  // === IVA ===
   let iva = 0;
-  if (factura.iva) {
-    if (typeof factura.iva === 'number') {
-      iva = factura.iva;
-    } else if (typeof factura.iva === 'string' && factura.iva.endsWith('%')) {
-      iva = subtotal * (parseFloat(factura.iva) / 100);
-    } else {
-      iva = Number(factura.iva) || 0;
+  if (typeof ivaRaw !== 'undefined' && ivaRaw !== null && ivaRaw !== '') {
+    if (typeof ivaRaw === 'number') {
+      // Si es número entero y <=100, se interpreta como porcentaje
+      if (ivaRaw > 0 && ivaRaw <= 100) {
+        iva = subtotal * (ivaRaw / 100);
+      } else {
+        iva = ivaRaw; // valor absoluto
+      }
+    } else if (typeof ivaRaw === 'string') {
+      if (ivaRaw.endsWith('%')) {
+        iva = subtotal * (parseFloat(ivaRaw) / 100);
+      } else if (!isNaN(Number(ivaRaw))) {
+        // Si es string numérico, se interpreta como porcentaje
+        const num = Number(ivaRaw);
+        if (num > 0 && num <= 100) {
+          iva = subtotal * (num / 100);
+        } else {
+          iva = num; // valor absoluto
+        }
+      } else {
+        iva = 0;
+      }
     }
   }
-  // Descuento
+
+  // === Descuento ===
   let descuento = 0;
-  if (factura.descuento) {
-    if (typeof factura.descuento === 'number') {
-      descuento = factura.descuento;
-    } else if (typeof factura.descuento === 'string' && factura.descuento.endsWith('%')) {
-      descuento = subtotal * (parseFloat(factura.descuento) / 100);
-    } else {
-      descuento = Number(factura.descuento) || 0;
+  if (typeof descuentoRaw !== 'undefined' && descuentoRaw !== null && descuentoRaw !== '') {
+    if (typeof descuentoRaw === 'number') {
+      // Si es número entero y <=100, se interpreta como porcentaje
+      if (descuentoRaw > 0 && descuentoRaw <= 100) {
+        descuento = subtotal * (descuentoRaw / 100);
+      } else {
+        descuento = descuentoRaw; // valor absoluto
+      }
+    } else if (typeof descuentoRaw === 'string') {
+      if (descuentoRaw.endsWith('%')) {
+        descuento = subtotal * (parseFloat(descuentoRaw) / 100);
+      } else if (!isNaN(Number(descuentoRaw))) {
+        // Si es string numérico, se interpreta como porcentaje
+        const num = Number(descuentoRaw);
+        if (num > 0 && num <= 100) {
+          descuento = subtotal * (num / 100);
+        } else {
+          descuento = num; // valor absoluto
+        }
+      } else {
+        descuento = 0;
+      }
     }
   }
+
   // Total
   const total_numeric = subtotal + iva - descuento;
   // Total en texto
