@@ -86,11 +86,55 @@ El cuerpo de la petición debe ser un objeto JSON con la siguiente estructura (p
 
 ---
 
-## Respuestas
+## Errores y Formatos de Respuesta
 
-- **200 OK:** Devuelve el PDF generado.
-- **500 Error:** Devuelve un JSON con el mensaje de error.
+El endpoint `/generate-invoice` puede devolver los siguientes errores:
 
+### 1. Error de validación de datos
+- **Código:** 400
+- **Ejemplo:**
+```json
+{
+  "error": "Datos de factura inválidos",
+  "details": [
+    "\"client.address\" is required"
+  ]
+}
+```
+
+### 2. Error de autenticación (API Key)
+- **Código:** 401
+- **Ejemplo:**
+```json
+{
+  "error": "No autorizado",
+  "details": ["API Key inválida o ausente"]
+}
+```
+
+### 3. Error por archivo faltante (logo, fuente, etc.)
+- **Código:** 400
+- **Ejemplo:**
+```json
+{
+  "error": "Archivo de logo no encontrado",
+  "details": ["No existe el archivo: assets/logo.png"]
+}
+```
+
+### 4. Error por rate limiting
+- **Código:** 429
+- **Ejemplo:**
+```json
+{
+  "error": "Demasiadas peticiones",
+  "details": ["Has excedido el límite de peticiones, intenta más tarde."]
+}
+```
+
+### 5. Error interno del servidor
+- **Código:** 500
+- **Ejemplo:**
 ```json
 {
   "error": "Error generando PDF",
@@ -98,55 +142,11 @@ El cuerpo de la petición debe ser un objeto JSON con la siguiente estructura (p
 }
 ```
 
----
-
-## Formato de Respuestas de Error (Validación y Archivos Faltantes)
-
-A partir de la versión que resuelve el issue #1, los errores de validación y archivos faltantes devuelven un JSON con el siguiente formato:
-
+Todos los errores siguen el formato:
 ```json
 {
   "error": "Mensaje general del error",
-  "details": [
-    "Detalle 1",
-    "Detalle 2"
-  ]
-}
-```
-
-### Ejemplos
-
-- **Error de validación de datos:**
-
-```json
-{
-  "error": "Datos de factura inválidos",
-  "details": [
-    "\"company.name\" is required",
-    "\"items\" must contain at least 1 items"
-  ]
-}
-```
-
-- **Archivo de logo no encontrado:**
-
-```json
-{
-  "error": "Archivo de logo no encontrado",
-  "details": [
-    "No existe el archivo: assets/logo.png"
-  ]
-}
-```
-
-- **Fuente no encontrada:**
-
-```json
-{
-  "error": "Fuente no encontrada",
-  "details": [
-    "No existe el archivo: assets/fonts/DanhDa-Bold.ttf"
-  ]
+  "details": ["Detalle 1", "Detalle 2"]
 }
 ```
 
