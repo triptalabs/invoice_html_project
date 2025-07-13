@@ -28,3 +28,5 @@ puppeteer_cache/
 *.swp
 .idea/
 .vscode/ 
+
+.cursor
