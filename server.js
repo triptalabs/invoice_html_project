@@ -8,6 +8,7 @@ const Joi = require('joi');
 const rateLimit = require('express-rate-limit');
 const genericPool = require('generic-pool');
 const pino = require('pino');
+const invoiceUtils = require('./invoice_utils');
 
 const app = express();
 app.use(express.json({ limit: '2mb' }));
@@ -74,6 +75,18 @@ const invoiceSchema = Joi.object({
       price: Joi.number().required(),
     })
   ).min(1).required(),
+  iva: Joi.alternatives()
+    .try(
+      Joi.number().min(0),
+      Joi.string().pattern(/^\d{1,3}%$/)
+    )
+    .optional(),
+  descuento: Joi.alternatives()
+    .try(
+      Joi.number().min(0),
+      Joi.string().pattern(/^\d{1,3}%$/)
+    )
+    .optional(),
   // Otros campos opcionales pueden ir aquí
 });
 
@@ -114,11 +127,8 @@ app.post('/generate-invoice', apiKeyAuth, limiter, async (req, res) => {
     // Cargar plantilla y estilos
     const templateHtml = fs.readFileSync(path.join(__dirname, 'template.html'), 'utf8');
     const styles = fs.readFileSync(path.join(__dirname, 'styles.css'), 'utf8');
-    // Clonar el objeto para no mutar el original
-    const data = JSON.parse(JSON.stringify(value));
-
-    // Calcular el total sumando los subtotales de los items
-    data.total = data.items.reduce((acc, item) => acc + (item.quantity * item.price), 0);
+    // Calcular totales y total_text usando la utilidad
+    const data = invoiceUtils.calcularTotales(value);
 
     // Asignar logo fijo si es necesario
     data.company = data.company || {};

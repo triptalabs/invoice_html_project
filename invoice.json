@@ -22,7 +22,9 @@
     "seller": "",
     "conditions": "Transferencia",
     "reference": "",
-    "delivery": "Envío"
+    "delivery": "Envío",
+    "iva": "19%",
+    "descuento": "10%"
   },
   "items": [
     {
@@ -34,8 +36,7 @@
         "Rango temperatura: -26 °C a +222 °C"
       ],
       "quantity": 2.00,
-      "unit_price": 57000,
-      "total": 114000
+      "unit_price": 57000
     },
     {
       "code": "TL-INS-E-2",
@@ -46,8 +47,7 @@
         "Rango temperatura: -26 °C a +222 °C"
       ],
       "quantity": 4.00,
-      "unit_price": 10500,
-      "total": 42000
+      "unit_price": 10500
     },
     {
       "code": "TL-INS-E-2-A",
@@ -58,16 +58,10 @@
         "Rango temperatura: -26 °C a +222 °C"
       ],
       "quantity": 2.00,
-      "unit_price": 21000,
-      "total": 42000
+      "unit_price": 21000
     }  ],
 "observations": [
     "Para la fabricación de equipos, requerimos un abono equivalente al 30% del total del equipo, el 70% restante se cancela el día de la entrega /envío. El tiempo de entrega es de 10 días hábiles para equipos sin electrónica (CLS, Autoclaves, Columnas de extracción, cilindros, etc.) y de 20 días hábiles para equipos con electrónica (Hornos de vacío, liofilizadoras, Cabinas de flujo laminar, etc.",
     "Los precios ofertados en este documento no incluyen el impuesto I.V.A."
-  ],
-  "totals": {
-    "subtotal": "198.000",
-    "total_numeric": "198.000,00",
-    "total_text": "CIENTO NOVENTA Y OCHO MIL 00/100"
-  }
+  ]
 }

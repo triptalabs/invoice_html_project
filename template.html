@@ -32,7 +32,7 @@
             </td>
             <td class="quantity-column">{{this.quantity}}</td>
             <td class="price-column">{{formatCurrency this.unit_price}}</td>
-            <td class="subtotal-column">{{formatCurrency this.total}}</td>
+            <td class="subtotal-column">{{formatCurrency this.subtotal}}</td>
           </tr>
           {{/each}}
         </tbody>
@@ -48,6 +48,8 @@
     <div class="totals-summary">
       <div class="totals-container">
         <p><strong>Subtotal:</strong> {{formatCurrency totals.subtotal}}</p>
+        <p><strong>IVA:</strong> {{formatCurrency totals.iva}}</p>
+        <p><strong>Descuento:</strong> {{formatCurrency totals.descuento}}</p>
         <div class="total-box">
           <p><strong>TOTAL</strong></p>
           <p>{{formatCurrency totals.total_numeric}}</p>

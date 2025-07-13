@@ -67,22 +67,37 @@ El cuerpo de la petición debe ser un objeto JSON con la siguiente estructura (p
         "Rango temperatura: -26 °C a +222 °C"
       ],
       "quantity": 2.00,
-      "unit_price": 57000,
-      "total": 114000
+      "unit_price": 57000
     }
     // ... más ítems
   ],
+  "iva": 19, // También puedes usar "19%" o un valor absoluto como 50000
+  "descuento": "10%", // También puedes usar un número absoluto
   "observations": [
     "Observación 1",
     "Observación 2"
-  ],
-  "totals": {
-    "subtotal": "198.000",
-    "total_numeric": "198.000,00",
-    "total_text": "CIENTO NOVENTA Y OCHO MIL 00/100"
-  }
+  ]
 }
 ```
+
+---
+
+### Validación de IVA y Descuento
+- **Opcionales:** Puedes omitirlos si no aplican.
+- **Formato permitido:**
+  - Porcentaje: "19%" o 19 (ambos equivalen a 19% del subtotal)
+  - Valor absoluto: 50000 (aplica 50,000 exactos)
+- **Validación:**
+  - Solo se aceptan números positivos o strings que terminen en '%'.
+  - Si el formato es incorrecto, la API devuelve un error de validación.
+
+---
+
+### Cálculo de Totales
+- Todos los totales (subtotal, iva, descuento, total, total_text) se calculan automáticamente en backend.
+- No envíes campos de totales en el JSON de entrada.
+- El campo 'total_text' siempre se genera en español.
+- Tanto el CLI como la API usan la misma lógica de cálculo y validación.
 
 ---
 
