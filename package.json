@@ -5,12 +5,19 @@
   "main": "generate.js",
   "scripts": {
     "generate": "node generate.js",
-    "api": "node server.js"
+    "api": "node server.js",
+    "test": "uvu tests"
   },
   "dependencies": {
     "cheerio": "^1.0.0-rc.12",
+    "express": "^4.18.2",
+    "express-rate-limit": "^7.5.1",
     "handlebars": "^4.7.8",
-    "puppeteer": "^22.8.2",
-    "express": "^4.18.2"
+    "joi": "^17.13.3",
+    "puppeteer": "^22.8.2"
+  },
+  "devDependencies": {
+    "undici": "^7.11.0",
+    "uvu": "^0.5.6"
   }
 }
