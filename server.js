@@ -4,6 +4,7 @@ const path = require('path');
 const Handlebars = require('handlebars');
 const puppeteer = require('puppeteer');
 const cheerio = require('cheerio');
+const Joi = require('joi');
 
 const app = express();
 app.use(express.json({ limit: '2mb' }));
@@ -34,23 +35,75 @@ const fontToBase64 = (filePath) => {
   return `data:font/truetype;base64,${Buffer.from(file).toString('base64')}`;
 };
 
+// Esquema de validación para la factura (solo client e items, sin total)
+const invoiceSchema = Joi.object({
+  client: Joi.object({
+    name: Joi.string().required(),
+    id: Joi.string().required(),
+    address: Joi.string().required(),
+  }).required(),
+  items: Joi.array().items(
+    Joi.object({
+      description: Joi.string().required(),
+      quantity: Joi.number().required(),
+      price: Joi.number().required(),
+    })
+  ).min(1).required(),
+  // Otros campos opcionales pueden ir aquí
+});
+
 app.post('/generate-invoice', async (req, res) => {
   try {
+    // Validar el JSON recibido
+    const { error, value } = invoiceSchema.validate(req.body, { abortEarly: false });
+    if (error) {
+      return res.status(400).json({
+        error: 'Datos de factura inválidos',
+        details: error.details.map(d => d.message)
+      });
+    }
     // Cargar plantilla y estilos
     const templateHtml = fs.readFileSync(path.join(__dirname, 'template.html'), 'utf8');
     const styles = fs.readFileSync(path.join(__dirname, 'styles.css'), 'utf8');
     // Clonar el objeto para no mutar el original
-    const data = JSON.parse(JSON.stringify(req.body));
+    const data = JSON.parse(JSON.stringify(value));
 
-    // Convertir rutas de logo a Base64 si existen
+    // Calcular el total sumando los subtotales de los items
+    data.total = data.items.reduce((acc, item) => acc + (item.quantity * item.price), 0);
+
+    // Asignar logo fijo si es necesario
+    data.company = data.company || {};
+    data.company.logo = 'assets/logotipo negro.png'; // Ruta fija
+
+    // Convertir rutas de logo a Base64 si existen y verificar existencia
     if (data.company && data.company.logo) {
-      data.company.logo = imageToBase64(path.join(__dirname, data.company.logo));
+      const logoPath = path.join(__dirname, data.company.logo);
+      if (!fs.existsSync(logoPath)) {
+        return res.status(400).json({
+          error: 'Archivo de logo no encontrado',
+          details: [`No existe el archivo: ${data.company.logo}`]
+        });
+      }
+      data.company.logo = imageToBase64(logoPath);
     }
     if (data.company && data.company.logo_small) {
-      data.company.logo_small = imageToBase64(path.join(__dirname, data.company.logo_small));
+      const logoSmallPath = path.join(__dirname, data.company.logo_small);
+      if (!fs.existsSync(logoSmallPath)) {
+        return res.status(400).json({
+          error: 'Archivo de logo pequeño no encontrado',
+          details: [`No existe el archivo: ${data.company.logo_small}`]
+        });
+      }
+      data.company.logo_small = imageToBase64(logoSmallPath);
     }
-    // Fuente en Base64
-    const fontPath = path.join(__dirname, 'Assets/fonts/DanhDa-Bold.ttf');
+    // Fuente en Base64 y verificación
+    const fontPath = path.join(__dirname, 'assets/fonts/DanhDa-Bold.ttf');
+    if (!fs.existsSync(fontPath)) {
+      return res.status(400).json({
+        error: 'Fuente no encontrada',
+        details: ['No existe el archivo: assets/fonts/DanhDa-Bold.ttf']
+      });
+    }
     const fontBase64 = fontToBase64(fontPath);
     const fontFaceDefinition = `\n@font-face {\n  font-family: 'DanhDa-Bold';\n  src: url(${fontBase64}) format('truetype');\n}`;
     const finalCssForPdf = `${fontFaceDefinition}\n${styles}`;
