@@ -166,6 +166,24 @@ curl -X POST http://localhost:3000/generate-invoice \
 
 ---
 
+## Optimización de concurrencia y logging estructurado
+
+### Pool de Puppeteer
+
+El servidor utiliza un pool de instancias de Puppeteer (mediante `generic-pool`) para manejar múltiples peticiones concurrentes de generación de PDF de forma eficiente. Esto evita cuellos de botella y mejora el rendimiento bajo alta demanda.
+
+- El pool es configurable (por defecto, hasta 4 instancias concurrentes).
+- Cada petición adquiere una instancia del pool y la libera al finalizar.
+
+### Logging estructurado y monitoreo
+
+Se utiliza `pino` para registrar logs estructurados de todas las peticiones, errores y eventos relevantes:
+
+- Los logs se muestran en consola en formato legible y se guardan en `logs/api.log`.
+- Permite rastrear errores, uso de la API y monitorear el sistema fácilmente.
+
+---
+
 ## Créditos y Licencia
 - Proyecto desarrollado por [Tu Nombre o Empresa].
 - Basado en Node.js, Handlebars, Puppeteer y Express.
