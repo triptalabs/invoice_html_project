@@ -6,6 +6,8 @@ const puppeteer = require('puppeteer');
 const cheerio = require('cheerio');
 const Joi = require('joi');
 const rateLimit = require('express-rate-limit');
+const genericPool = require('generic-pool');
+const pino = require('pino');
 
 const app = express();
 app.use(express.json({ limit: '2mb' }));
@@ -75,7 +77,31 @@ const invoiceSchema = Joi.object({
   // Otros campos opcionales pueden ir aquí
 });
 
+// Crear un pool de instancias de Puppeteer
+const browserPool = genericPool.createPool({
+  create: async () => await puppeteer.launch({ headless: true, args: ['--no-sandbox'] }),
+  destroy: async (browser) => await browser.close()
+}, {
+  max: 4, // Número máximo de instancias concurrentes (ajustable)
+  min: 1
+});
+
+const logger = pino({
+  transport: {
+    targets: [
+      { target: 'pino-pretty', options: { colorize: true } },
+      { target: 'pino/file', options: { destination: './logs/api.log' } }
+    ]
+  }
+});
+
+app.use((req, res, next) => {
+  logger.info({ method: req.method, url: req.url, ip: req.ip }, 'Petición recibida');
+  next();
+});
+
 app.post('/generate-invoice', apiKeyAuth, limiter, async (req, res) => {
+  let browser;
   try {
     // Validar el JSON recibido
     const { error, value } = invoiceSchema.validate(req.body, { abortEarly: false });
@@ -142,7 +168,8 @@ app.post('/generate-invoice', apiKeyAuth, limiter, async (req, res) => {
     const finalHtml = `\n      <!DOCTYPE html>\n      <html lang=\"es\">\n      <head>\n        <meta charset=\"UTF-8\">\n        <style>${finalCssForPdf}</style>\n      </head>\n      <body>\n        ${$('.content').html()}\n      </body>\n      </html>`;
 
     // Generar PDF
-    const browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox'] });
+    // Obtener instancia del pool
+    browser = await browserPool.acquire();
     const page = await browser.newPage();
     await page.setContent(finalHtml, { waitUntil: 'networkidle0' });
     const pdfBuffer = await page.pdf({
@@ -158,12 +185,22 @@ app.post('/generate-invoice', apiKeyAuth, limiter, async (req, res) => {
         left: '10mm'
       }
     });
-    await browser.close();
+    await page.close();
+    await browserPool.release(browser);
+    browser = null;
+    logger.info({ client: req.body.client, total: data.total }, 'Factura generada correctamente');
     res.set('Content-Type', 'application/pdf');
     res.send(pdfBuffer);
   } catch (err) {
+    logger.error({ error: err.message, stack: err.stack }, 'Error generando PDF');
+    if (browser) await browserPool.release(browser);
     res.status(500).json({ error: 'Error generando PDF', details: err.message });
   }
+});
+
+app.use((err, req, res, next) => {
+  logger.error({ error: err.message, stack: err.stack }, 'Error no controlado');
+  res.status(500).json({ error: 'Error interno', details: err.message });
 });
 
 const PORT = process.env.PORT || 3000;
