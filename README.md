@@ -148,10 +148,30 @@ curl -X POST http://localhost:3000/generate-invoice \
     { "description": "Producto 1", "quantity": 2, "price": 50000 },
     { "description": "Producto 2", "quantity": 1, "price": 198000 }
   ],
-  "total": 298000,
-  "observations": "Gracias por su compra."
+  "iva": "19%", // También puedes usar 19 (porcentaje) o 50000 (valor absoluto)
+  "descuento": 10000, // También puedes usar "10%" (porcentaje)
+  "observations": ["Gracias por su compra."]
 }
 ```
+
+---
+
+### Notas sobre IVA y Descuento
+- **Opcionales:** Puedes omitirlos si no aplican.
+- **Formato permitido:**
+  - Porcentaje: "19%" o 19 (ambos equivalen a 19% del subtotal)
+  - Valor absoluto: 50000 (aplica 50,000 exactos)
+- **Validación:**
+  - Solo se aceptan números positivos o strings que terminen en '%'.
+  - Si el formato es incorrecto, la API devuelve un error de validación.
+
+---
+
+### Cálculo de Totales
+- Todos los totales (subtotal, iva, descuento, total, total_text) se calculan automáticamente en backend.
+- No envíes campos de totales en el JSON de entrada.
+- El campo 'total_text' siempre se genera en español.
+- Tanto el CLI como la API usan la misma lógica de cálculo y validación.
 
 ---
 

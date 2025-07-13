@@ -13,6 +13,7 @@ const path = require('path');
 const Handlebars = require('handlebars');
 const puppeteer = require('puppeteer');
 const cheerio = require('cheerio');
+const invoiceUtils = require('./invoice_utils');
 
 // Helper para formatear números con separadores de miles (puntos)
 const formatNumberWithDots = (number) => {
@@ -51,12 +52,19 @@ const fontToBase64 = (filePath) => {
 (async () => {
   // Cargar plantilla HTML, datos JSON y estilos CSS
   const templateHtml = fs.readFileSync(path.join(__dirname, 'template.html'), 'utf8');
-  const data = JSON.parse(fs.readFileSync(path.join(__dirname, 'invoice.json'), 'utf8'));
+  const dataRaw = JSON.parse(fs.readFileSync(path.join(__dirname, 'invoice.json'), 'utf8'));
   const styles = fs.readFileSync(path.join(__dirname, 'styles.css'), 'utf8');
 
+  // Calcular totales y total_text usando la utilidad
+  const data = invoiceUtils.calcularTotales(dataRaw);
+
   // Convertir rutas de logo a Base64 y actualizar el objeto de datos
-  data.company.logo = imageToBase64(path.join(__dirname, data.company.logo));
-  data.company.logo_small = imageToBase64(path.join(__dirname, data.company.logo_small));
+  if (data.company && data.company.logo) {
+    data.company.logo = imageToBase64(path.join(__dirname, data.company.logo));
+  }
+  if (data.company && data.company.logo_small) {
+    data.company.logo_small = imageToBase64(path.join(__dirname, data.company.logo_small));
+  }
   
   // Convertir la fuente a Base64
   const fontPath = path.join(__dirname, 'Assets/fonts/DanhDa-Bold.ttf');
