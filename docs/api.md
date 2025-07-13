@@ -218,3 +218,49 @@ El endpoint `/generate-invoice` valida el JSON recibido con el siguiente esquema
 
 - Desarrollado por [Tu Nombre o Empresa]
 - Licencia MIT
+
+---
+
+## Seguridad: Autenticación por API Key y Rate Limiting
+
+### Autenticación por API Key
+
+Para acceder al endpoint `/generate-invoice` es obligatorio enviar una API Key válida en la cabecera `x-api-key`.
+
+- **Cabecera requerida:**
+  - `x-api-key: TU_API_KEY`
+- La API Key por defecto es `supersecretkey` (puede cambiarse en la variable de entorno `API_KEY`).
+
+#### Ejemplo de petición autenticada:
+
+```bash
+curl -X POST http://localhost:3000/generate-invoice \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: supersecretkey" \
+  --data-binary @invoice.json \
+  --output factura.pdf
+```
+
+- Si la API Key es incorrecta o falta, la respuesta será:
+
+```json
+{
+  "error": "No autorizado",
+  "details": ["API Key inválida o ausente"]
+}
+```
+
+### Rate Limiting
+
+Para evitar abuso, cada IP puede realizar hasta 30 peticiones cada 15 minutos.
+
+- Si se excede el límite, la respuesta será:
+
+```json
+{
+  "error": "Demasiadas peticiones",
+  "details": ["Has excedido el límite de peticiones, intenta más tarde."]
+}
+```
+
+---
