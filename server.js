@@ -5,9 +5,32 @@ const Handlebars = require('handlebars');
 const puppeteer = require('puppeteer');
 const cheerio = require('cheerio');
 const Joi = require('joi');
+const rateLimit = require('express-rate-limit');
 
 const app = express();
 app.use(express.json({ limit: '2mb' }));
+
+// Middleware de autenticación por API Key
+const API_KEY = process.env.API_KEY || 'supersecretkey'; // Cambia esto en producción
+function apiKeyAuth(req, res, next) {
+  const key = req.headers['x-api-key'];
+  if (!key || key !== API_KEY) {
+    return res.status(401).json({
+      error: 'No autorizado',
+      details: ['API Key inválida o ausente']
+    });
+  }
+  next();
+}
+// Middleware de rate limiting
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutos
+  max: 30, // 30 peticiones por IP
+  message: {
+    error: 'Demasiadas peticiones',
+    details: ['Has excedido el límite de peticiones, intenta más tarde.']
+  }
+});
 
 // Helpers reutilizados del generate.js
 const formatNumberWithDots = (number) => {
@@ -52,7 +75,7 @@ const invoiceSchema = Joi.object({
   // Otros campos opcionales pueden ir aquí
 });
 
-app.post('/generate-invoice', async (req, res) => {
+app.post('/generate-invoice', apiKeyAuth, limiter, async (req, res) => {
   try {
     // Validar el JSON recibido
     const { error, value } = invoiceSchema.validate(req.body, { abortEarly: false });
