@@ -1,0 +1,18 @@
+# Dependencias locales que no deben ir en la imagen
+node_modules
+
+# Logs y archivos de depuración
+logs
+*.log
+debug.html
+invoice.pdf
+
+# Git y configuraciones de Docker
+.git
+.gitignore
+Dockerfile
+.dockerignore
+
+# Otros
+README.md
+.env
