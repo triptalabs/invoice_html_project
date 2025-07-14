@@ -55,8 +55,11 @@ const fontToBase64 = (filePath) => {
   const dataRaw = JSON.parse(fs.readFileSync(path.join(__dirname, 'invoice.json'), 'utf8'));
   const styles = fs.readFileSync(path.join(__dirname, 'styles.css'), 'utf8');
 
+  // Adaptar los datos a la estructura estándar
+  const adaptedData = invoiceUtils.adaptInvoiceData(dataRaw);
+
   // Calcular totales y total_text usando la utilidad
-  const data = invoiceUtils.calcularTotales(dataRaw);
+  const data = invoiceUtils.calcularTotales(adaptedData);
 
   // Convertir rutas de logo a Base64 y actualizar el objeto de datos
   if (data.company && data.company.logo) {
