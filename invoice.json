@@ -23,8 +23,8 @@
     "conditions": "Transferencia",
     "reference": "",
     "delivery": "Envío",
-    "iva": "19%",
-    "descuento": "10%"
+    "iva": "19",
+    "descuento": "10"
   },
   "items": [
     {
@@ -36,7 +36,7 @@
         "Rango temperatura: -26 °C a +222 °C"
       ],
       "quantity": 2.00,
-      "unit_price": 57000
+      "unit_price": 570000
     },
     {
       "code": "TL-INS-E-2",
