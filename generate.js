@@ -15,7 +15,7 @@ const path = require('path'); // Para manejo de rutas
 const Handlebars = require('handlebars'); // Motor de plantillas
 const puppeteer = require('puppeteer'); // Generación de PDF con Chromium
 const cheerio = require('cheerio'); // Manipulación de HTML en memoria
-const invoiceUtils = require('./invoice_utils'); // Utilidades de facturación
+const invoiceUtils = require('./src/utils/invoice_utils'); // Utilidades de facturación
 const yargs = require('yargs/yargs'); // Para argumentos CLI
 
 // -----------------------------
@@ -89,12 +89,12 @@ function fontToBase64(filePath) {
 // Permite personalizar rutas de archivos y nombres de salida.
 const argv = yargs(process.argv.slice(2)).argv;
 const baseDir = __dirname;
-const templatePath = argv.template || path.join(baseDir, 'template.html');
-const dataPath = argv.data || path.join(baseDir, 'invoice.json');
-const stylesPath = argv.styles || path.join(baseDir, 'styles.css');
-const fontPath = argv.font || path.join(baseDir, 'assets/fonts/DanhDa-Bold.ttf');
-const outputPdf = argv.output || path.join(baseDir, 'invoice.pdf');
-const debugHtmlPath = argv.debug || path.join(baseDir, 'debug.html');
+const templatePath = argv.template || path.join(baseDir, 'src/templates/template.html');
+const dataPath = argv.data || path.join(baseDir, 'src/data/invoice.json');
+const stylesPath = argv.styles || path.join(baseDir, 'src/templates/styles.css');
+const fontPath = argv.font || path.join(baseDir, 'src/assets/fonts/DanhDa-Bold.ttf');
+const outputPdf = argv.output || path.join(baseDir, 'src/output/invoice.pdf');
+const debugHtmlPath = argv.debug || path.join(baseDir, 'src/output/debug.html');
 
 // -----------------------------
 // FLUJO PRINCIPAL ASÍNCRONO
@@ -115,7 +115,11 @@ const debugHtmlPath = argv.debug || path.join(baseDir, 'debug.html');
     // CARGA DE ARCHIVOS Y DATOS
     // -----------------------------
     const templateHtml = fs.readFileSync(templatePath, 'utf8'); // Plantilla principal
-    const dataRaw = JSON.parse(fs.readFileSync(dataPath, 'utf8')); // Datos de la factura
+    // Cambiar la carga de datos para unir company.json (global) con invoice.json (específico)
+    const invoiceRaw = JSON.parse(fs.readFileSync(path.join(baseDir, 'src/data/invoice.json'), 'utf8'));
+    const companyData = JSON.parse(fs.readFileSync(path.join(baseDir, 'src/data/company.json'), 'utf8'));
+    // Unir los datos: company global + invoice específico
+    const dataRaw = { ...invoiceRaw, company: companyData };
     const styles = fs.readFileSync(stylesPath, 'utf8'); // Estilos CSS
 
     // -----------------------------
@@ -130,11 +134,16 @@ const debugHtmlPath = argv.debug || path.join(baseDir, 'debug.html');
     // -----------------------------
     // Si hay logos definidos, se convierten a Base64 para incrustar en el PDF.
     if (data.company && data.company.logo) {
-      const logoPath = path.join(baseDir, data.company.logo);
+      // Si la ruta no es absoluta, anteponer la ruta de logos
+      const logoPath = path.isAbsolute(data.company.logo)
+        ? data.company.logo
+        : path.join(baseDir, 'src/assets', data.company.logo);
       data.company.logo = imageToBase64(logoPath);
     }
     if (data.company && data.company.logo_small) {
-      const logoSmallPath = path.join(baseDir, data.company.logo_small);
+      const logoSmallPath = path.isAbsolute(data.company.logo_small)
+        ? data.company.logo_small
+        : path.join(baseDir, 'src/assets', data.company.logo_small);
       data.company.logo_small = imageToBase64(logoSmallPath);
     }
 

@@ -1,61 +1,72 @@
+# Generador de Facturas en PDF con Node.js
 
-# Invoice HTML Project
+Este proyecto ofrece una solución robusta y profesional para generar documentos PDF (facturas, cotizaciones, etc.) a partir de datos en formato JSON. Utiliza Node.js, Handlebars para plantillas HTML, CSS para un diseño personalizable y Puppeteer para la conversión a PDF.
 
-Generador profesional de facturas en PDF a partir de datos JSON, usando Node.js, Handlebars, CSS y Puppeteer. Incluye una API REST lista para integrarse con n8n, Zapier u otros sistemas.
+Incluye un script para uso por línea de comandos (CLI) y un servidor con una API REST lista para integrarse con sistemas externos como n8n, Zapier, o cualquier aplicación backend.
 
 ---
 
 ## Tabla de Contenidos
-- [Estructura del Proyecto](#estructura-del-proyecto)
+- [Características Principales](#características-principales)
 - [Requisitos](#requisitos)
+- [Estructura del Proyecto](#estructura-del-proyecto)
 - [Instalación](#instalación)
 - [Uso por Línea de Comandos (CLI)](#uso-por-línea-de-comandos-cli)
 - [Uso como API REST](#uso-como-api-rest)
 - [Personalización](#personalización)
-- [Archivos y Carpetas](#archivos-y-carpetas)
-- [Ejemplo de JSON de Factura](#ejemplo-de-json-de-factura)
+- [Desarrollo y Depuración](#desarrollo-y-depuración)
+- [Rendimiento y Logging (API)](#rendimiento-y-logging-api)
 - [Solución de Problemas](#solución-de-problemas)
 - [Créditos y Licencia](#créditos-y-licencia)
 
 ---
 
-## Estructura del Proyecto
+## Características Principales
 
-```
-invoice_html_project/
-├── Assets/
-│   ├── fonts/
-│   │   └── DanhDa-Bold.ttf
-│   ├── logo blanco png.png
-│   ├── logo negro.png
-│   ├── logotipo negro.png
-│   └── styles.css
-├── debug.html
-├── font_test.pdf
-├── generate.js
-├── invoice.json
-├── invoice.pdf
-├── package.json
-├── package-lock.json
-├── README.md
-├── styles.css
-├── template.html
-└── server.js
-```
+- **Generación Dual**: Funciona tanto por CLI como a través de una API REST.
+- **Plantillas Dinámicas**: Usa Handlebars para inyectar datos en una plantilla HTML.
+- **Diseño Personalizable**: Los estilos se controlan con un archivo CSS externo, facilitando la adaptación a cualquier identidad de marca.
+- **Cálculos Automáticos**: Calcula subtotales, impuestos (IVA) y descuentos en el backend.
+- **Incrustación de Recursos**: Las imágenes (logos) y fuentes personalizadas se incrustan en el PDF en formato Base64, garantizando portabilidad y eliminando dependencias externas.
+- **Encabezado y Pie de Página**: Soporte para encabezados y pies de página que se repiten en cada hoja del PDF.
+- **Modo de Depuración**: Genera un archivo `debug.html` para previsualizar y ajustar el diseño fácilmente en un navegador antes de generar el PDF.
+- **API de Alto Rendimiento**: El servidor utiliza un pool de instancias de Puppeteer para manejar peticiones concurrentes de forma eficiente.
+- **Logging Estructurado**: La API registra logs detallados con `pino` para un monitoreo y depuración sencillos.
 
-- **generate.js**: Script principal para generar el PDF desde CLI.
-- **server.js**: Servidor Express para exponer la API REST.
-- **template.html**: Plantilla Handlebars para la factura.
-- **styles.css**: Estilos principales de la factura.
-- **Assets/**: Logos, fuentes y estilos adicionales.
-- **invoice.json**: Ejemplo de datos de factura.
+## Requisitos
+- **Node.js**: `v18.0` o superior (requerido por Puppeteer).
+- **Gestor de Paquetes**: `npm` o `pnpm`.
 
 ---
 
-## Requisitos
-- Node.js >= 16
-- npm >= 8
-- (Opcional) n8n, Zapier u otro orquestador para consumir la API
+## Estructura del Proyecto
+
+La estructura está organizada para separar la lógica, las plantillas, los datos y los archivos de salida.
+
+```
+invoice_html_project/
+├── src/
+│   ├── assets/
+│   │   ├── fonts/
+│   │   │   └── DanhDa-Bold.ttf   # Fuentes personalizadas
+│   │   ├── logo.png              # Logo principal
+│   │   └── logo_small.png        # Logo para el pie de página
+│   ├── data/
+│   │   ├── company.json          # Datos globales de la empresa
+│   │   └── invoice.json          # Ejemplo de datos de una factura
+│   ├── templates/
+│   │   ├── template.html         # Plantilla principal de la factura
+│   │   └── styles.css            # Hoja de estilos principal
+│   ├── utils/
+│   │   └── invoice_utils.js      # Lógica de negocio y cálculos
+│   └── output/
+│       ├── invoice.pdf           # PDF generado por defecto
+│       └── debug.html            # Archivo HTML para depuración
+├── generate.js                   # Script principal para la generación CLI
+├── server.js                     # Servidor Express para la API REST
+├── package.json
+└── README.md
+```
 
 ---
 
@@ -63,15 +74,25 @@ invoice_html_project/
 
 1. Clona el repositorio o descarga el código.
 2. Instala las dependencias:
+
+   Con `npm`:
    ```bash
    npm install
+   ```
+   O con `pnpm`:
+   ```bash
+   pnpm install
    ```
 
 ---
 
 ## Uso por Línea de Comandos (CLI)
 
-Genera un PDF a partir de `invoice.json`:
+El script `generate.js` permite crear un PDF directamente desde la terminal.
+
+### Comando Básico
+
+Para generar un PDF usando los archivos de configuración por defecto (`src/data/invoice.json`, `src/templates/template.html`, etc.):
 
 ```bash
 npm run generate

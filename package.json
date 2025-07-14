@@ -5,7 +5,7 @@
   "main": "generate.js",
   "scripts": {
     "generate": "node generate.js",
-    "api": "node server.js",
+    "api": "node src/api/server.js",
     "test": "uvu tests"
   },
   "dependencies": {

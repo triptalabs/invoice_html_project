@@ -16,8 +16,8 @@ const path = require('path'); // Manejo de rutas
 const Handlebars = require('handlebars'); // Motor de plantillas
 const puppeteer = require('puppeteer'); // Generación de PDF
 const cheerio = require('cheerio'); // Manipulación de HTML
-const invoiceUtils = require('./invoice_utils'); // Utilidades de facturación
-const { validateInvoice } = require('./invoice_schema'); // Middleware de validación
+const invoiceUtils = require('../utils/invoice_utils'); // Utilidades de facturación
+const { validateInvoice } = require('../utils/invoice_schema'); // Middleware de validación
 
 // -----------------------------
 // CONFIGURACIÓN DE SERVIDOR Y SEGURIDAD
@@ -106,8 +106,8 @@ const imageToBase64 = (filePath) => {
  */
 async function generatePdfFromData(invoiceData) {
     // Cargar plantilla y estilos
-    const templateHtml = fs.readFileSync(path.join(__dirname, 'template.html'), 'utf8');
-    const styles = fs.readFileSync(path.join(__dirname, 'styles.css'), 'utf8');
+    const templateHtml = fs.readFileSync(path.join(__dirname, '../templates/template.html'), 'utf8');
+    const styles = fs.readFileSync(path.join(__dirname, '../templates/styles.css'), 'utf8');
 
     // Adaptar datos y calcular totales
     const adaptedData = invoiceUtils.adaptInvoiceData(invoiceData);
@@ -115,10 +115,16 @@ async function generatePdfFromData(invoiceData) {
 
     // Convertir logos a Base64 si existen
     if (data.company && data.company.logo) {
-        data.company.logo = imageToBase64(data.company.logo);
+        const logoPath = path.isAbsolute(data.company.logo)
+            ? data.company.logo
+            : path.join(__dirname, '../assets', data.company.logo);
+        data.company.logo = imageToBase64(logoPath);
     }
     if (data.company && data.company.logo_small) {
-        data.company.logo_small = imageToBase64(data.company.logo_small);
+        const logoSmallPath = path.isAbsolute(data.company.logo_small)
+            ? data.company.logo_small
+            : path.join(__dirname, '../assets', data.company.logo_small);
+        data.company.logo_small = imageToBase64(logoSmallPath);
     }
 
     // Compilar plantilla principal
@@ -160,16 +166,16 @@ async function generatePdfFromData(invoiceData) {
 // -----------------------------
 /**
  * POST /generate-invoice
- * Requiere:
- *   - API Key válida en header 'x-api-key'
- *   - JSON de factura válido en el body
- * Responde:
- *   - PDF generado como attachment
- *   - O error detallado en JSON
+ * Ahora la API une automáticamente los datos de la empresa global con los datos recibidos.
  */
 app.post('/generate-invoice', limiter, apiKeyAuth, validateInvoice, async (req, res) => {
     try {
-        const pdfBuffer = await generatePdfFromData(req.body);
+        // Cargar datos globales de la empresa
+        const companyData = JSON.parse(fs.readFileSync(path.join(__dirname, '../data/company.json'), 'utf8'));
+        // Unir los datos recibidos con los datos de la empresa
+        const dataRaw = { ...req.body, company: companyData };
+        // Generar el PDF usando los datos combinados
+        const pdfBuffer = await generatePdfFromData(dataRaw);
         res.setHeader('Content-Type', 'application/pdf');
         res.setHeader('Content-Disposition', 'attachment; filename=factura.pdf');
         res.send(pdfBuffer);
