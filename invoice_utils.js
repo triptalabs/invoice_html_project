@@ -148,7 +148,45 @@ function numeroATexto(num) {
   return texto;
 }
 
+/**
+ * Adapta cualquier JSON de factura (simple o completo) a la estructura estándar esperada por la plantilla.
+ * Rellena con valores por defecto si faltan campos.
+ * @param {Object} data - Objeto de datos de la factura (puede ser simple o completo)
+ * @returns {Object} - Objeto adaptado con estructura estándar
+ */
+function adaptInvoiceData(data) {
+  // Valores por defecto para cada sección
+  const defaultCompany = {
+    name: '', logo: '', logo_small: '', tax_id: '', phone: '', city: '', website: ''
+  };
+  const defaultClient = {
+    name: '', id: '', address: '', nit: '', code: ''
+  };
+  const defaultInvoice = {
+    type: '', number: '', place: '', date: '', expiry_date: '', seller: '', conditions: '', reference: '', delivery: '', iva: '', descuento: ''
+  };
+  // Adaptar items
+  const adaptItems = (items) => (items || []).map(item => ({
+    code: item.code || '',
+    name: item.name || item.description || '',
+    details: item.details || [],
+    quantity: item.quantity || 0,
+    unit_price: item.unit_price || item.price || 0
+  }));
+  // Construir objeto adaptado
+  return {
+    company: { ...defaultCompany, ...(data.company || {}) },
+    client: { ...defaultClient, ...(data.client || {}) },
+    invoice: { ...defaultInvoice, ...(data.invoice || {}) },
+    items: adaptItems(data.items),
+    iva: data.iva || (data.invoice && data.invoice.iva) || '',
+    descuento: data.descuento || (data.invoice && data.invoice.descuento) || '',
+    observations: data.observations || []
+  };
+}
+
 module.exports = {
   calcularTotales,
-  numeroATexto
+  numeroATexto,
+  adaptInvoiceData
 }; 
