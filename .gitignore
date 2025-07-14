@@ -30,3 +30,4 @@ puppeteer_cache/
 .vscode/ 
 
 .cursor
+debug.html
