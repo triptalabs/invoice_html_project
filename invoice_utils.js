@@ -1,9 +1,22 @@
-// Utilidades para cálculo de totales y conversión de número a texto
+// -----------------------------------------------------------------------------
+// UTILIDADES DE FACTURACIÓN: CÁLCULO DE TOTALES Y CONVERSIÓN DE NÚMEROS A TEXTO
+// -----------------------------------------------------------------------------
+// Este archivo contiene funciones auxiliares para:
+//  - Calcular subtotales, IVA, descuentos y totales de una factura
+//  - Convertir números a texto en español (para mostrar el total en letras)
+//  - Adaptar cualquier JSON de factura a la estructura estándar esperada
+// Todas las funciones son puras y no dependen de frameworks externos.
+// -----------------------------------------------------------------------------
 
+// -----------------------------
+// CÁLCULO DE TOTALES DE FACTURA
+// -----------------------------
 /**
  * Calcula los totales de la factura a partir de los items y los campos opcionales de IVA y descuento.
+ * Permite que IVA y descuento sean porcentajes (ej: 19, "19%") o valores absolutos.
+ *
  * @param {Object} data - Objeto de datos de la factura (company, client, items, iva, descuento, etc.)
- * @returns {Object} - Objeto con los campos calculados: items (con subtotal), subtotal, iva, descuento, total_numeric, total_text
+ * @returns {Object} - Objeto con los campos calculados: items (con subtotal), totals: {subtotal, iva, descuento, total_numeric, total_text}
  */
 function calcularTotales(data) {
   // Copia profunda para no mutar el original
@@ -29,6 +42,7 @@ function calcularTotales(data) {
   const subtotal = factura.items.reduce((acc, item) => acc + item.subtotal, 0);
 
   // === IVA ===
+  // Puede ser porcentaje (ej: 19, "19%") o valor absoluto
   let iva = 0;
   if (typeof ivaRaw !== 'undefined' && ivaRaw !== null && ivaRaw !== '') {
     if (typeof ivaRaw === 'number') {
@@ -56,6 +70,7 @@ function calcularTotales(data) {
   }
 
   // === Descuento ===
+  // Puede ser porcentaje (ej: 10, "10%") o valor absoluto
   let descuento = 0;
   if (typeof descuentoRaw !== 'undefined' && descuentoRaw !== null && descuentoRaw !== '') {
     if (typeof descuentoRaw === 'number') {
@@ -82,9 +97,9 @@ function calcularTotales(data) {
     }
   }
 
-  // Total
+  // Total numérico
   const total_numeric = subtotal + iva - descuento;
-  // Total en texto
+  // Total en texto (en letras)
   const total_text = numeroATexto(total_numeric);
   return {
     ...factura,
@@ -99,22 +114,27 @@ function calcularTotales(data) {
   };
 }
 
+// -----------------------------
+// CONVERSIÓN DE NÚMERO A TEXTO (ESPAÑOL)
+// -----------------------------
 /**
  * Convierte un número a texto en español (solo enteros hasta millones).
- * @param {number} num
- * @returns {string}
+ * Ejemplo: 1234.56 => "MIL DOSCIENTOS TREINTA Y CUATRO 56/100"
+ *
+ * @param {number} num - Número a convertir
+ * @returns {string} - Representación en texto en mayúsculas
  */
 function numeroATexto(num) {
   // Implementación simple para números enteros hasta millones
   // Puedes reemplazar por una librería si se requiere más robustez
-  const UNIDADES = ['','uno','dos','tres','cuatro','cinco','seis','siete','ocho','nueve'];
-  const DECENAS = ['','diez','veinte','treinta','cuarenta','cincuenta','sesenta','setenta','ochenta','noventa'];
-  const CENTENAS = ['','cien','doscientos','trescientos','cuatrocientos','quinientos','seiscientos','setecientos','ochocientos','novecientos'];
+  const UNIDADES = ['', 'uno', 'dos', 'tres', 'cuatro', 'cinco', 'seis', 'siete', 'ocho', 'nueve'];
+  const DECENAS = ['', 'diez', 'veinte', 'treinta', 'cuarenta', 'cincuenta', 'sesenta', 'setenta', 'ochenta', 'noventa'];
+  const CENTENAS = ['', 'cien', 'doscientos', 'trescientos', 'cuatrocientos', 'quinientos', 'seiscientos', 'setecientos', 'ochocientos', 'novecientos'];
   if (typeof num !== 'number' || isNaN(num)) return '';
   const entero = Math.floor(num);
   if (entero === 0) return 'cero';
   if (entero > 999999999) return 'número demasiado grande';
-  // Función recursiva
+  // Función recursiva para descomponer el número
   function convertir(n) {
     if (n < 10) return UNIDADES[n];
     if (n < 100) {
@@ -148,9 +168,13 @@ function numeroATexto(num) {
   return texto;
 }
 
+// -----------------------------
+// ADAPTACIÓN DE DATOS DE FACTURA
+// -----------------------------
 /**
  * Adapta cualquier JSON de factura (simple o completo) a la estructura estándar esperada por la plantilla.
- * Rellena con valores por defecto si faltan campos.
+ * Rellena con valores por defecto si faltan campos, y normaliza los items.
+ *
  * @param {Object} data - Objeto de datos de la factura (puede ser simple o completo)
  * @returns {Object} - Objeto adaptado con estructura estándar
  */
@@ -165,7 +189,7 @@ function adaptInvoiceData(data) {
   const defaultInvoice = {
     type: '', number: '', place: '', date: '', expiry_date: '', seller: '', conditions: '', reference: '', delivery: '', iva: '', descuento: ''
   };
-  // Adaptar items
+  // Adaptar items: normaliza nombres de campos y valores por defecto
   const adaptItems = (items) => (items || []).map(item => ({
     code: item.code || '',
     name: item.name || item.description || '',
@@ -185,6 +209,9 @@ function adaptInvoiceData(data) {
   };
 }
 
+// -----------------------------
+// EXPORTACIÓN DE FUNCIONES
+// -----------------------------
 module.exports = {
   calcularTotales,
   numeroATexto,
