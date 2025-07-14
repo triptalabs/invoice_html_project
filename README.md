@@ -6,18 +6,51 @@ Incluye un script para uso por línea de comandos (CLI) y un servidor con una AP
 
 ---
 
-## Tabla de Contenidos
-- [Características Principales](#características-principales)
-- [Requisitos](#requisitos)
-- [Estructura del Proyecto](#estructura-del-proyecto)
-- [Instalación](#instalación)
-- [Uso por Línea de Comandos (CLI)](#uso-por-línea-de-comandos-cli)
-- [Uso como API REST](#uso-como-api-rest)
-- [Personalización](#personalización)
-- [Desarrollo y Depuración](#desarrollo-y-depuración)
-- [Rendimiento y Logging (API)](#rendimiento-y-logging-api)
-- [Solución de Problemas](#solución-de-problemas)
-- [Créditos y Licencia](#créditos-y-licencia)
+## Diagramas de Flujo
+
+### Flujo de Trabajo (CLI)
+
+```mermaid
+graph TD
+    subgraph Flujo de Trabajo CLI
+        A[Usuario] -- ejecuta --> B(npm run generate);
+        B -- invoca --> C(generate.js);
+        C -- lee --> D{template.html};
+        C -- lee --> E{invoice.json};
+        C -- lee --> F{styles.css};
+        C -- lee --> G{company.json};
+        C -- procesa y combina --> H[HTML Final];
+        H -- usa --> I(Puppeteer);
+        I -- genera --> J(invoice.pdf);
+        I -- genera --> K(debug.html);
+    end
+```
+
+### Flujo de Trabajo (API)
+
+```mermaid
+sequenceDiagram
+    participant Client as Cliente
+    participant Server as Servidor Express
+    participant PuppeteerPool as Pool de Puppeteer
+
+    Client->>Server: POST /generate-invoice (con JSON y API Key)
+    Server->>Server: Middleware: Rate Limiting
+    Server->>Server: Middleware: API Key Auth
+    Server->>Server: Middleware: Validación Joi
+    alt Datos Inválidos
+        Server-->>Client: 400 Bad Request
+    end
+    Server->>Server: Lee company.json
+    Server->>Server: Combina JSON de la petición con company.json
+    Server->>Server: Llama a generatePdfFromData()
+    Server->>PuppeteerPool: Adquiere instancia de Puppeteer
+    PuppeteerPool-->>Server: Retorna instancia
+    Server->>Server: Genera HTML con Handlebars
+    Server->>Server: Renderiza PDF con Puppeteer
+    Server->>PuppeteerPool: Libera instancia de Puppeteer
+    Server-->>Client: 200 OK (con archivo PDF)
+```
 
 ---
 
@@ -32,6 +65,8 @@ Incluye un script para uso por línea de comandos (CLI) y un servidor con una AP
 - **Modo de Depuración**: Genera un archivo `debug.html` para previsualizar y ajustar el diseño fácilmente en un navegador antes de generar el PDF.
 - **API de Alto Rendimiento**: El servidor utiliza un pool de instancias de Puppeteer para manejar peticiones concurrentes de forma eficiente.
 - **Logging Estructurado**: La API registra logs detallados con `pino` para un monitoreo y depuración sencillos.
+- **Seguridad**: La API incluye autenticación por API Key y limitación de peticiones (rate limiting).
+- **Validación de Datos**: Los datos de entrada de la API son validados usando Joi.
 
 ## Requisitos
 - **Node.js**: `v18.0` o superior (requerido por Puppeteer).
@@ -46,11 +81,14 @@ La estructura está organizada para separar la lógica, las plantillas, los dato
 ```
 invoice_html_project/
 ├── src/
+│   ├── api/
+│   │   └── server.js             # Servidor Express para la API REST
 │   ├── assets/
 │   │   ├── fonts/
 │   │   │   └── DanhDa-Bold.ttf   # Fuentes personalizadas
-│   │   ├── logo.png              # Logo principal
-│   │   └── logo_small.png        # Logo para el pie de página
+│   │   ├── logo blanco png.png
+│   │   ├── logo negro.png
+│   │   └── logotipo negro.png
 │   ├── data/
 │   │   ├── company.json          # Datos globales de la empresa
 │   │   └── invoice.json          # Ejemplo de datos de una factura
@@ -58,12 +96,14 @@ invoice_html_project/
 │   │   ├── template.html         # Plantilla principal de la factura
 │   │   └── styles.css            # Hoja de estilos principal
 │   ├── utils/
+│   │   ├── invoice_schema.js     # Esquema de validación de Joi
 │   │   └── invoice_utils.js      # Lógica de negocio y cálculos
 │   └── output/
 │       ├── invoice.pdf           # PDF generado por defecto
 │       └── debug.html            # Archivo HTML para depuración
 ├── generate.js                   # Script principal para la generación CLI
-├── server.js                     # Servidor Express para la API REST
+├── tests/
+│   └── generate-invoice.test.js  # Pruebas para la generación de facturas
 ├── package.json
 └── README.md
 ```
@@ -98,7 +138,15 @@ Para generar un PDF usando los archivos de configuración por defecto (`src/data
 npm run generate
 ```
 
-El archivo `invoice.pdf` se generará en la raíz del proyecto.
+El archivo `invoice.pdf` se generará en la carpeta `src/output/`.
+
+### Opciones Avanzadas
+
+Puedes especificar rutas personalizadas para los archivos de entrada y salida usando argumentos de línea de comandos:
+
+```bash
+node generate.js --template /ruta/a/mi/plantilla.html --data /ruta/a/mis/datos.json --output /ruta/de/salida/factura.pdf
+```
 
 ---
 
@@ -110,89 +158,52 @@ Inicia el servidor:
 npm run api
 ```
 
+El servidor se ejecutará en `http://localhost:3000`.
+
 ### Endpoint
+
 - **POST** `/generate-invoice`
-- **Body:** JSON de la factura (igual a `invoice.json`)
-- **Respuesta:** PDF (content-type: application/pdf)
+- **Body:** JSON de la factura (ver ejemplo en `src/data/invoice.json`).
+- **Headers:**
+    - `Content-Type`: `application/json`
+    - `x-api-key`: `supersecretkey` (o el valor de la variable de entorno `API_KEY`)
+- **Respuesta:** PDF (content-type: `application/pdf`)
 
 #### Ejemplo de petición (curl):
 ```bash
 curl -X POST http://localhost:3000/generate-invoice \
   -H "Content-Type: application/json" \
-  --data-binary @invoice.json \
+  -H "x-api-key: supersecretkey" \
+  --data-binary @"src/data/invoice.json" \
   --output factura.pdf
 ```
-
-#### Uso desde n8n
-- Nodo HTTP Request
-- Método: POST
-- URL: http://localhost:3000/generate-invoice
-- Body: JSON (igual a `invoice.json`)
-- Recibirás el PDF como respuesta
 
 ---
 
 ## Personalización
-- **Plantilla:** Modifica `template.html` para cambiar la estructura visual.
-- **Estilos:** Edita `styles.css` o `Assets/styles.css` para personalizar colores, fuentes y tamaños.
-- **Logos:** Cambia los archivos en `Assets/`.
-- **Fuente:** Usa cualquier fuente TTF en `Assets/fonts/` y actualiza la regla `@font-face` en CSS.
+- **Plantilla:** Modifica `src/templates/template.html` para cambiar la estructura visual.
+- **Estilos:** Edita `src/templates/styles.css` para personalizar colores, fuentes y tamaños.
+- **Logos:** Cambia los archivos en `src/assets/`.
+- **Fuente:** Usa cualquier fuente TTF en `src/assets/fonts/` y actualiza la regla `@font-face` en el CSS.
+- **Datos de la Empresa:** Modifica `src/data/company.json` para establecer los datos de tu empresa.
 
 ---
 
-## Archivos y Carpetas
-- **Assets/fonts/**: Fuentes personalizadas (ejemplo: DanhDa-Bold.ttf)
-- **Assets/**: Imágenes y CSS adicionales
-- **styles.css**: Estilos principales
-- **template.html**: Plantilla Handlebars
-- **generate.js**: Script CLI
-- **server.js**: API REST
-- **invoice.json**: Ejemplo de datos
+## Desarrollo y Depuración
+
+Para facilitar el diseño de la plantilla, el script `generate.js` crea un archivo `debug.html` en la carpeta `src/output/`. Este archivo contiene el HTML renderizado antes de la conversión a PDF, permitiéndote previsualizar los cambios en un navegador.
 
 ---
 
-## Ejemplo de JSON de Factura
-```json
-{
-  "company": {
-    "name": "Mi Empresa S.A.S.",
-    "address": "Calle 123 #45-67",
-    "phone": "(1) 234 5678",
-    "email": "info@miempresa.com"
-  },
-  "client": {
-    "name": "Cliente Ejemplo",
-    "id": "123456789",
-    "address": "Carrera 89 #12-34"
-  },
-  "items": [
-    { "description": "Producto 1", "quantity": 2, "price": 50000 },
-    { "description": "Producto 2", "quantity": 1, "price": 198000 }
-  ],
-  "iva": "19%", // También puedes usar 19 (porcentaje) o 50000 (valor absoluto)
-  "descuento": 10000, // También puedes usar "10%" (porcentaje)
-  "observations": ["Gracias por su compra."]
-}
-```
+## Rendimiento y Logging (API)
 
----
+### Pool de Puppeteer
 
-### Notas sobre IVA y Descuento
-- **Opcionales:** Puedes omitirlos si no aplican.
-- **Formato permitido:**
-  - Porcentaje: "19%" o 19 (ambos equivalen a 19% del subtotal)
-  - Valor absoluto: 50000 (aplica 50,000 exactos)
-- **Validación:**
-  - Solo se aceptan números positivos o strings que terminen en '%'.
-  - Si el formato es incorrecto, la API devuelve un error de validación.
+El servidor utiliza un pool de instancias de Puppeteer (mediante `generic-pool`) para manejar múltiples peticiones concurrentes de generación de PDF de forma eficiente. Esto evita cuellos de botella y mejora el rendimiento bajo alta demanda.
 
----
+### Logging estructurado
 
-### Cálculo de Totales
-- Todos los totales (subtotal, iva, descuento, total, total_text) se calculan automáticamente en backend.
-- No envíes campos de totales en el JSON de entrada.
-- El campo 'total_text' siempre se genera en español.
-- Tanto el CLI como la API usan la misma lógica de cálculo y validación.
+Se utiliza `pino` para registrar logs estructurados de todas las peticiones, errores y eventos relevantes. Los logs se muestran en la consola y se pueden redirigir a un archivo para su posterior análisis.
 
 ---
 
@@ -200,32 +211,12 @@ curl -X POST http://localhost:3000/generate-invoice \
 - **Puppeteer no instala Chromium:**
   - Ejecuta `PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=1 npm install puppeteer` y asegúrate de tener Chrome instalado.
 - **El PDF no muestra imágenes o fuentes:**
-  - Verifica rutas relativas en CSS y HTML.
-  - Usa rutas absolutas si consumes la API desde otro directorio.
+  - Verifica que las rutas a los assets en el HTML y CSS sean correctas.
 - **Error de permisos en puertos:**
-  - Cambia el puerto en `server.js` si el 3000 está ocupado.
-
----
-
-## Optimización de concurrencia y logging estructurado
-
-### Pool de Puppeteer
-
-El servidor utiliza un pool de instancias de Puppeteer (mediante `generic-pool`) para manejar múltiples peticiones concurrentes de generación de PDF de forma eficiente. Esto evita cuellos de botella y mejora el rendimiento bajo alta demanda.
-
-- El pool es configurable (por defecto, hasta 4 instancias concurrentes).
-- Cada petición adquiere una instancia del pool y la libera al finalizar.
-
-### Logging estructurado y monitoreo
-
-Se utiliza `pino` para registrar logs estructurados de todas las peticiones, errores y eventos relevantes:
-
-- Los logs se muestran en consola en formato legible y se guardan en `logs/api.log`.
-- Permite rastrear errores, uso de la API y monitorear el sistema fácilmente.
+  - Cambia el puerto en `src/api/server.js` si el puerto 3000 está ocupado.
 
 ---
 
 ## Créditos y Licencia
-- Proyecto desarrollado por [Tu Nombre o Empresa].
-- Basado en Node.js, Handlebars, Puppeteer y Express.
+- Proyecto desarrollado utilizando Node.js, Handlebars, Puppeteer, Express, y otras librerías de código abierto.
 - Licencia MIT.
