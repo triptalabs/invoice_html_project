@@ -14,10 +14,9 @@ const rateLimit = require('express-rate-limit'); // Limitador de peticiones
 const fs = require('fs'); // Manejo de archivos
 const path = require('path'); // Manejo de rutas
 const Handlebars = require('handlebars'); // Motor de plantillas
-const puppeteer = require('puppeteer'); // Generación de PDF
-const cheerio = require('cheerio'); // Manipulación de HTML
 const invoiceUtils = require('../utils/invoice_utils'); // Utilidades de facturación
 const { validateInvoice } = require('../utils/invoice_schema'); // Middleware de validación
+const pdf = require('html-pdf'); // Generación de PDF con html-pdf
 
 // -----------------------------
 // CONFIGURACIÓN DE SERVIDOR Y SEGURIDAD
@@ -94,6 +93,32 @@ const imageToBase64 = (filePath) => {
     }
 };
 
+function extractContentBlock(html) {
+  // Buscar el primer <div class="content"> ignorando espacios/indentación
+  const divRegex = /<div\s+class=["']content["'][^>]*>/i;
+  const openMatch = divRegex.exec(html);
+  if (!openMatch) return null;
+  let start = openMatch.index;
+  let idx = start + openMatch[0].length;
+  let depth = 1;
+  while (idx < html.length) {
+    const nextOpen = html.indexOf('<div', idx);
+    const nextClose = html.indexOf('</div>', idx);
+    if (nextClose === -1) break;
+    if (nextOpen !== -1 && nextOpen < nextClose) {
+      idx = nextOpen + 4;
+      depth++;
+    } else {
+      idx = nextClose + 6;
+      depth--;
+      if (depth === 0) {
+        return html.slice(start, idx);
+      }
+    }
+  }
+  return null;
+}
+
 // -----------------------------
 // FUNCIÓN PRINCIPAL DE GENERACIÓN DE PDF
 // -----------------------------
@@ -108,6 +133,7 @@ async function generatePdfFromData(invoiceData) {
     // Cargar plantilla y estilos
     const templateHtml = fs.readFileSync(path.join(__dirname, '../templates/template.html'), 'utf8');
     const styles = fs.readFileSync(path.join(__dirname, '../templates/styles.css'), 'utf8');
+    const fontPath = path.join(__dirname, '../assets/fonts/DanhDa-Bold.ttf');
 
     // Adaptar datos y calcular totales
     const adaptedData = invoiceUtils.adaptInvoiceData(invoiceData);
@@ -127,38 +153,65 @@ async function generatePdfFromData(invoiceData) {
         data.company.logo_small = imageToBase64(logoSmallPath);
     }
 
+    // Incrustar fuente en Base64
+    let fontBase64 = '';
+    if (fs.existsSync(fontPath)) {
+        const file = fs.readFileSync(fontPath);
+        fontBase64 = `data:font/truetype;base64,${Buffer.from(file).toString('base64')}`;
+    }
+    const fontFaceDefinition = fontBase64 ? `\n@font-face {\n  font-family: 'DanhDa-Bold';\n  src: url(${fontBase64}) format('truetype');\n}` : '';
+
     // Compilar plantilla principal
     const template = Handlebars.compile(templateHtml);
     const rawHtml = template(data);
 
-    // Extraer header y footer de la plantilla
-    const $ = cheerio.load(rawHtml);
-    const headerTemplate = $('#header-template').html();
-    const footerTemplate = $('#footer-template').html();
+    // Extraer bloques de header, footer y content
+    const headerTemplateMatch = templateHtml.match(/<template id="header-template">([\s\S]*?)<\/template>/);
+    const footerTemplateMatch = templateHtml.match(/<template id="footer-template">([\s\S]*?)<\/template>/);
+    const contentBlock = extractContentBlock(templateHtml);
+    if (!headerTemplateMatch || !footerTemplateMatch || !contentBlock) {
+      throw new Error('No se encontraron los bloques de header, footer o content en la plantilla HTML.');
+    }
+    const headerTemplate = headerTemplateMatch[1];
+    const footerTemplate = footerTemplateMatch[1];
+    const mainContent = contentBlock;
 
-    // Generar HTML final para el PDF
-    const finalHtml = `<!DOCTYPE html><html><head><style>${styles}</style></head><body>${$('.content').html()}</body></html>`;
-    // Compilar header y footer con los datos y estilos
-    const finalHeader = Handlebars.compile(`<style>${styles}</style>${headerTemplate}`)(data);
-    const finalFooter = Handlebars.compile(`<style>${styles}</style>${footerTemplate}`)(data);
+    // Generar CSS final
+    const finalCssForPdf = `${fontFaceDefinition}\n${styles}`;
 
-    // Inicializar Puppeteer y generar el PDF
-    const browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox'] });
-    const page = await browser.newPage();
-    await page.setContent(finalHtml, { waitUntil: 'networkidle0' });
+    // Compilar header y footer finales
+    const finalHeader = Handlebars.compile(`<style>${finalCssForPdf}</style>${headerTemplate}`)(data);
+    const finalFooter = Handlebars.compile(`<style>${finalCssForPdf}</style>${footerTemplate}`)(data);
 
-    // Exportar el PDF con márgenes y header/footer
-    const pdfBuffer = await page.pdf({
+    // Generar HTML final para PDF
+    const finalHtml = `\n      <!DOCTYPE html>\n      <html lang=\"es\">\n      <head>\n        <meta charset=\"UTF-8\">\n        <style>${finalCssForPdf}</style>\n      </head>\n      <body>\n        <div class=\"content\">${mainContent}</div>\n      </body>\n      </html>`;
+
+    // Opciones para html-pdf
+    const options = {
         format: 'A4',
-        printBackground: true,
-        displayHeaderFooter: true,
-        headerTemplate: finalHeader,
-        footerTemplate: finalFooter,
-        margin: { top: '75mm', bottom: '45mm', right: '10mm', left: '10mm' }
-    });
+        border: {
+            top: '20mm',
+            right: '10mm',
+            bottom: '20mm',
+            left: '10mm'
+        },
+        header: {
+            height: '60mm',
+            contents: finalHeader
+        },
+        footer: {
+            height: '40mm',
+            contents: finalFooter
+        }
+    };
 
-    await browser.close();
-    return pdfBuffer;
+    // html-pdf solo soporta callbacks, así que lo envolvemos en una promesa
+    return new Promise((resolve, reject) => {
+        pdf.create(finalHtml, options).toBuffer((err, buffer) => {
+            if (err) return reject(err);
+            resolve(buffer);
+        });
+    });
 }
 
 // -----------------------------

@@ -1,6 +1,5 @@
 import { test } from 'uvu';
 import * as assert from 'uvu/assert';
-import { fetch } from 'undici';
 
 const API_URL = 'http://localhost:3000/generate-invoice';
 const API_KEY = 'supersecretkey';

@@ -13,10 +13,8 @@
 const fs = require('fs'); // Para manejo de archivos
 const path = require('path'); // Para manejo de rutas
 const Handlebars = require('handlebars'); // Motor de plantillas
-const puppeteer = require('puppeteer'); // Generación de PDF con Chromium
-const cheerio = require('cheerio'); // Manipulación de HTML en memoria
+const pdf = require('html-pdf'); // Generación de PDF con html-pdf
 const invoiceUtils = require('./src/utils/invoice_utils'); // Utilidades de facturación
-const yargs = require('yargs/yargs'); // Para argumentos CLI
 
 // -----------------------------
 // HELPERS Y REGISTRO DE HANDLEBARS
@@ -87,21 +85,19 @@ function fontToBase64(filePath) {
 // PARÁMETROS DE LÍNEA DE COMANDOS (CLI)
 // -----------------------------
 // Permite personalizar rutas de archivos y nombres de salida.
-const argv = yargs(process.argv.slice(2)).argv;
 const baseDir = __dirname;
-const templatePath = argv.template || path.join(baseDir, 'src/templates/template.html');
-const dataPath = argv.data || path.join(baseDir, 'src/data/invoice.json');
-const stylesPath = argv.styles || path.join(baseDir, 'src/templates/styles.css');
-const fontPath = argv.font || path.join(baseDir, 'src/assets/fonts/DanhDa-Bold.ttf');
-const outputPdf = argv.output || path.join(baseDir, 'src/output/invoice.pdf');
-const debugHtmlPath = argv.debug || path.join(baseDir, 'src/output/debug.html');
+const templatePath = path.join(baseDir, 'src/templates/template.html');
+const dataPath = path.join(baseDir, 'src/data/invoice.json');
+const stylesPath = path.join(baseDir, 'src/templates/styles.css');
+const fontPath = path.join(baseDir, 'src/assets/fonts/DanhDa-Bold.ttf');
+const outputPdf = path.join(baseDir, 'src/output/invoice.pdf');
+const debugHtmlPath = path.join(baseDir, 'src/output/debug.html');
 
 // -----------------------------
 // FLUJO PRINCIPAL ASÍNCRONO
 // -----------------------------
 // Todo el proceso está protegido con manejo de errores y cierre seguro de recursos.
 (async () => {
-  let browser; // Referencia al navegador Puppeteer
   try {
     // -----------------------------
     // VALIDACIÓN DE ARCHIVOS REQUERIDOS
@@ -162,12 +158,42 @@ const debugHtmlPath = argv.debug || path.join(baseDir, 'src/output/debug.html');
     const rawHtml = template(data);
 
     // -----------------------------
-    // EXTRACCIÓN DE HEADER Y FOOTER
+    // EXTRACCIÓN DE HEADER Y FOOTER DESDE <template>
     // -----------------------------
-    // Se usan selectores para obtener los bloques de header/footer definidos en la plantilla.
-    const $ = cheerio.load(rawHtml);
-    const headerTemplate = $('#header-template').html();
-    const footerTemplate = $('#footer-template').html();
+    // Extracción robusta del bloque <div class="content">...</div> permitiendo anidamiento y espacios
+    function extractContentBlock(html) {
+      // Buscar el primer <div class="content"> ignorando espacios/indentación
+      const divRegex = /<div\s+class=["']content["'][^>]*>/i;
+      const openMatch = divRegex.exec(html);
+      if (!openMatch) return null;
+      let start = openMatch.index;
+      let idx = start + openMatch[0].length;
+      let depth = 1;
+      while (idx < html.length) {
+        const nextOpen = html.indexOf('<div', idx);
+        const nextClose = html.indexOf('</div>', idx);
+        if (nextClose === -1) break;
+        if (nextOpen !== -1 && nextOpen < nextClose) {
+          idx = nextOpen + 4;
+          depth++;
+        } else {
+          idx = nextClose + 6;
+          depth--;
+          if (depth === 0) {
+            return html.slice(start, idx);
+          }
+        }
+      }
+      return null;
+    }
+    const headerTemplateMatch = rawHtml.match(/<template id="header-template">([\s\S]*?)<\/template>/);
+    const footerTemplateMatch = rawHtml.match(/<template id="footer-template">([\s\S]*?)<\/template>/);
+    const contentBlock = extractContentBlock(rawHtml);
+    if (!headerTemplateMatch || !footerTemplateMatch || !contentBlock) {
+      throw new Error('No se encontraron los bloques de header, footer o content en la plantilla HTML.');
+    }
+    const headerTemplate = headerTemplateMatch[1];
+    const footerTemplate = footerTemplateMatch[1];
 
     // -----------------------------
     // GENERACIÓN DE CSS FINAL
@@ -187,13 +213,13 @@ const debugHtmlPath = argv.debug || path.join(baseDir, 'src/output/debug.html');
     // GENERACIÓN DE HTML FINAL PARA PDF
     // -----------------------------
     // Solo se incluye el contenido principal, sin los bloques de header/footer.
-    const finalHtml = `\n      <!DOCTYPE html>\n      <html lang=\"es\">\n      <head>\n        <meta charset=\"UTF-8\">\n        <style>${finalCssForPdf}</style>\n      </head>\n      <body>\n        ${$('.content').html()}\n      </body>\n      </html>`;
+    const finalHtml = `\n      <!DOCTYPE html>\n      <html lang=\"es\">\n      <head>\n        <meta charset=\"UTF-8\">\n        <style>${finalCssForPdf}</style>\n      </head>\n      <body>\n        <div class=\"content\">${contentBlock}</div>\n      </body>\n      </html>`;
 
     // -----------------------------
     // GENERACIÓN DE HTML DE DEPURACIÓN
     // -----------------------------
     // Incluye el CSS externo y muestra los bloques de header/footer para referencia visual.
-    const debugHtml = `\n      <!DOCTYPE html>\n      <html lang=\"es\">\n      <head>\n        <meta charset=\"UTF-8\">\n        <title>Debug - Vista previa de factura</title>\n        ${finalCssForDebug}\n      </head>\n      <body>\n        <div class=\"content\">\n          ${$('.content').html()}\n        </div>\n        <div style=\"margin-top: 50px; border-top: 1px dashed #ccc; padding-top: 20px;\">\n          <h3>Plantilla de Encabezado:</h3>\n          <div id=\"header-template\">\n            ${headerTemplate}\n          </div>\n          <h3>Plantilla de Pie de Página:</h3>\n          <div id=\"footer-template\">\n            ${footerTemplate}\n          </div>\n        </div>\n      </body>\n      </html>`;
+    const debugHtml = `\n      <!DOCTYPE html>\n      <html lang=\"es\">\n      <head>\n        <meta charset=\"UTF-8\">\n        <title>Debug - Vista previa de factura</title>\n        ${finalCssForDebug}\n      </head>\n      <body>\n        <div class=\"content\">\n          ${contentBlock}\n        </div>\n        <div style=\"margin-top: 50px; border-top: 1px dashed #ccc; padding-top: 20px;\">\n          <h3>Plantilla de Encabezado:</h3>\n          <div id=\"header-template\">\n            ${headerTemplate}\n          </div>\n          <h3>Plantilla de Pie de Página:</h3>\n          <div id=\"footer-template\">\n            ${footerTemplate}\n          </div>\n        </div>\n      </body>\n      </html>`;
 
     // -----------------------------
     // GUARDADO DE HTML DE DEPURACIÓN
@@ -202,34 +228,29 @@ const debugHtmlPath = argv.debug || path.join(baseDir, 'src/output/debug.html');
     console.log(`Archivo de depuración generado: ${debugHtmlPath}`);
 
     // -----------------------------
-    // INICIALIZACIÓN DE PUPPETEER Y GENERACIÓN DE PDF
+    // GENERACIÓN DE PDF CON HTML-PDF
     // -----------------------------
-    // Se lanza un navegador headless, se carga el HTML y se exporta el PDF.
     console.log('Generando PDF...');
-    browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox'] });
-    const page = await browser.newPage();
-    await page.setContent(finalHtml, { waitUntil: 'networkidle0' });
-
-    // -----------------------------
-    // EXPORTACIÓN DEL PDF FINAL
-    // -----------------------------
-    // Se configuran márgenes y se inyectan los bloques de header/footer.
-    console.log('Generando archivo PDF...');
-    await page.pdf({
-      path: outputPdf,
+    const options = {
       format: 'A4',
-      printBackground: true,
-      displayHeaderFooter: true,
-      headerTemplate: finalHeader,
-      footerTemplate: finalFooter,
-      margin: {
-        top: '75mm',    // Margen superior (ajustable según diseño)
-        bottom: '45mm', // Margen inferior
+      border: {
+        top: '20mm',
         right: '10mm',
+        bottom: '20mm',
         left: '10mm'
       }
+    };
+    await new Promise((resolve, reject) => {
+      pdf.create(finalHtml, options).toFile(outputPdf, (err, res) => {
+        if (err) {
+          console.error('Error generando PDF:', err);
+          reject(err);
+        } else {
+          console.log(`PDF generado con éxito: ${outputPdf}`);
+          resolve(res);
+        }
+      });
     });
-    console.log(`PDF generado con éxito: ${outputPdf}`);
   } catch (error) {
     // -----------------------------
     // MANEJO DE ERRORES
@@ -241,7 +262,6 @@ const debugHtmlPath = argv.debug || path.join(baseDir, 'src/output/debug.html');
     // CIERRE SEGURO DE RECURSOS
     // -----------------------------
     // Asegura que el navegador se cierre aunque ocurra un error.
-    if (browser) await browser.close();
     console.log('Proceso de generación de PDF finalizado.');
   }
 })();
