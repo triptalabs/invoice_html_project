@@ -1,6 +1,6 @@
 # Generador de Facturas en PDF con Node.js
 
-Este proyecto ofrece una solución robusta y profesional para generar documentos PDF (facturas, cotizaciones, etc.) a partir de datos en formato JSON. Utiliza Node.js, Handlebars para plantillas HTML, CSS para un diseño personalizable y Puppeteer para la conversión a PDF.
+Este proyecto ofrece una solución robusta y profesional para generar documentos PDF (facturas, cotizaciones, etc.) a partir de datos en formato JSON. Utiliza Node.js, Handlebars para plantillas HTML, CSS para un diseño personalizable y html-pdf para la conversión a PDF.
 
 Incluye un script para uso por línea de comandos (CLI) y un servidor con una API REST lista para integrarse con sistemas externos como n8n, Zapier, o cualquier aplicación backend.
 
@@ -20,7 +20,7 @@ graph TD
         C -- lee --> F{styles.css};
         C -- lee --> G{company.json};
         C -- procesa y combina --> H[HTML Final];
-        H -- usa --> I(Puppeteer);
+        H -- usa --> I(html-pdf);
         I -- genera --> J(invoice.pdf);
         I -- genera --> K(debug.html);
     end
@@ -32,7 +32,7 @@ graph TD
 sequenceDiagram
     participant Client as Cliente
     participant Server as Servidor Express
-    participant PuppeteerPool as Pool de Puppeteer
+    participant HtmlPdf as html-pdf
 
     Client->>Server: POST /generate-invoice (con JSON y API Key)
     Server->>Server: Middleware: Rate Limiting
@@ -44,11 +44,8 @@ sequenceDiagram
     Server->>Server: Lee company.json
     Server->>Server: Combina JSON de la petición con company.json
     Server->>Server: Llama a generatePdfFromData()
-    Server->>PuppeteerPool: Adquiere instancia de Puppeteer
-    PuppeteerPool-->>Server: Retorna instancia
-    Server->>Server: Genera HTML con Handlebars
-    Server->>Server: Renderiza PDF con Puppeteer
-    Server->>PuppeteerPool: Libera instancia de Puppeteer
+    Server->>HtmlPdf: Genera PDF con html-pdf
+    HtmlPdf-->>Server: Retorna PDF
     Server-->>Client: 200 OK (con archivo PDF)
 ```
 
@@ -63,13 +60,13 @@ sequenceDiagram
 - **Incrustación de Recursos**: Las imágenes (logos) y fuentes personalizadas se incrustan en el PDF en formato Base64, garantizando portabilidad y eliminando dependencias externas.
 - **Encabezado y Pie de Página**: Soporte para encabezados y pies de página que se repiten en cada hoja del PDF.
 - **Modo de Depuración**: Genera un archivo `debug.html` para previsualizar y ajustar el diseño fácilmente en un navegador antes de generar el PDF.
-- **API de Alto Rendimiento**: El servidor utiliza un pool de instancias de Puppeteer para manejar peticiones concurrentes de forma eficiente.
+- **API de Alto Rendimiento**: El servidor utiliza html-pdf para generar PDFs de manera eficiente.
 - **Logging Estructurado**: La API registra logs detallados con `pino` para un monitoreo y depuración sencillos.
 - **Seguridad**: La API incluye autenticación por API Key y limitación de peticiones (rate limiting).
 - **Validación de Datos**: Los datos de entrada de la API son validados usando Joi.
 
 ## Requisitos
-- **Node.js**: `v18.0` o superior (requerido por Puppeteer).
+- **Node.js**: `v18.0` o superior (recomendado).
 - **Gestor de Paquetes**: `npm` o `pnpm`.
 
 ---
@@ -199,7 +196,7 @@ Para facilitar el diseño de la plantilla, el script `generate.js` crea un archi
 
 ### Pool de Puppeteer
 
-El servidor utiliza un pool de instancias de Puppeteer (mediante `generic-pool`) para manejar múltiples peticiones concurrentes de generación de PDF de forma eficiente. Esto evita cuellos de botella y mejora el rendimiento bajo alta demanda.
+El servidor utiliza la librería html-pdf para generar PDFs a partir de HTML y CSS, eliminando la dependencia de Puppeteer y Chromium.
 
 ### Logging estructurado
 
@@ -208,15 +205,13 @@ Se utiliza `pino` para registrar logs estructurados de todas las peticiones, err
 ---
 
 ## Solución de Problemas
-- **Puppeteer no instala Chromium:**
-  - Ejecuta `PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=1 npm install puppeteer` y asegúrate de tener Chrome instalado.
-- **El PDF no muestra imágenes o fuentes:**
-  - Verifica que las rutas a los assets en el HTML y CSS sean correctas.
+- **Problemas con la generación de PDF:**
+  - Verifica que html-pdf esté correctamente instalado y que las rutas a los assets en el HTML y CSS sean correctas.
 - **Error de permisos en puertos:**
   - Cambia el puerto en `src/api/server.js` si el puerto 3000 está ocupado.
 
 ---
 
 ## Créditos y Licencia
-- Proyecto desarrollado utilizando Node.js, Handlebars, Puppeteer, Express, y otras librerías de código abierto.
+- Proyecto desarrollado utilizando Node.js, Handlebars, html-pdf, Express, y otras librerías de código abierto.
 - Licencia MIT.
