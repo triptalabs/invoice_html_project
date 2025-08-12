@@ -1,4 +1,4 @@
-![Project banner](banner html-min.png)
+![Project banner](banner-html-min.png)
 
 # Generador de Facturas en PDF con Node.js
 
