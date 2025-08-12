@@ -1,3 +1,5 @@
+![Project banner](banner html-min.png)
+
 # Generador de Facturas en PDF con Node.js
 
 Este proyecto ofrece una solución robusta y profesional para generar documentos PDF (facturas, cotizaciones, etc.) a partir de datos en formato JSON. Utiliza Node.js, Handlebars para plantillas HTML, CSS para un diseño personalizable y Puppeteer para la conversión a PDF.
